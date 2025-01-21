@@ -1,0 +1,5 @@
+flask
+transformers
+openai-whisper
+torch
+xformers

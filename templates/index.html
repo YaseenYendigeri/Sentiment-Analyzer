@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentiment Analyzer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #eef2f7;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #333;
+      }
+
+      .container {
+        width: 90%;
+        max-width: 600px;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        animation: fadeIn 1s ease-in-out;
+        box-sizing: border-box;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h1 {
+        text-align: center;
+        color: #007bff;
+        margin-bottom: 20px;
+        font-size: 1.8rem;
+      }
+
+      textarea,
+      input[type="file"] {
+        width: calc(100% - 24px);
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+
+      textarea::placeholder {
+        color: #aaa;
+      }
+
+      button {
+        padding: 6px 12px;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+
+      .loader {
+        border: 2px solid #f3f3f3;
+        border-top: 2px solid #007bff;
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .results {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+      }
+
+      .emoji {
+        font-size: 2rem;
+        display: block;
+        text-align: center;
+      }
+
+      .sentiment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #eaeaea;
+      }
+
+      .sentiment-item:last-child {
+        border-bottom: none;
+      }
+
+      .sentiment-label {
+        font-size: 1.1rem;
+      }
+
+      .sentiment-score {
+        font-size: 1rem;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Sentiment Analyzer 🌟</h1>
+
+      <!-- Text Sentiment Form -->
+      <form id="text-form" method="POST" action="/analyze-text">
+        <textarea name="text" placeholder="Type your text here..."></textarea>
+        <button type="submit">Analyze Text</button>
+      </form>
+
+      <!-- Audio Sentiment Form -->
+      <form
+        id="audio-form"
+        method="POST"
+        action="/analyze-audio"
+        enctype="multipart/form-data"
+      >
+        <input type="file" name="audio" accept="audio/*" />
+        <button type="submit">Analyze Audio</button>
+      </form>
+
+      <!-- Results Section -->
+      <div id="results">
+        <p class="emoji">🧐</p>
+        <div id="sentiments" class="sentiment-list"></div>
+      </div>
+    </div>
+
+    <script>
+      const emojiMap = {
+        anger: "😡",
+        disgust: "🤢",
+        fear: "😨",
+        joy: "😊",
+        neutral: "😐",
+        sadness: "😢",
+        surprise: "😲",
+        POSITIVE: "👍",
+        NEGATIVE: "👎",
+      };
+
+      const resultsContainer = document.getElementById("results");
+      const sentimentList = document.getElementById("sentiments");
+
+      document
+        .getElementById("text-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const response = await fetch("/analyze-text", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+          updateUI(data);
+        });
+
+      document
+        .getElementById("audio-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const response = await fetch("/analyze-audio", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+          updateUI(data);
+        });
+
+      function updateUI(data) {
+        const emotions = data.emotions[0];
+        const sentiments = data.sentiment[0];
+
+        sentimentList.innerHTML = "";
+
+        // Update emotions
+        emotions.forEach((emotion) => {
+          const item = createSentimentItem(
+            emotion.label,
+            emotion.score,
+            emojiMap[emotion.label]
+          );
+          sentimentList.appendChild(item);
+        });
+
+        // Update sentiments
+        sentiments.forEach((sentiment) => {
+          const item = createSentimentItem(
+            sentiment.label,
+            sentiment.score,
+            emojiMap[sentiment.label]
+          );
+          sentimentList.appendChild(item);
+        });
+
+        // Set main emoji
+        const topEmotion = emotions.sort((a, b) => b.score - a.score)[0];
+        resultsContainer.querySelector(".emoji").innerText =
+          emojiMap[topEmotion.label] || "🧐";
+      }
+
+      function createSentimentItem(label, score, emoji) {
+        const div = document.createElement("div");
+        div.className = "sentiment-item";
+
+        const labelSpan = document.createElement("span");
+        labelSpan.className = "sentiment-label";
+        labelSpan.innerText = `${emoji} ${
+          label.charAt(0).toUpperCase() + label.slice(1)
+        }`;
+
+        const scoreSpan = document.createElement("span");
+        scoreSpan.className = "sentiment-score";
+        scoreSpan.innerText = (score * 100).toFixed(2) + "%";
+
+        div.appendChild(labelSpan);
+        div.appendChild(scoreSpan);
+
+        return div;
+      }
+    </script>
+  </body>
+</html>
